@@ -64,7 +64,7 @@ impl<'a> Session<'a> {
         }
         hashes
     }
-    
+
     fn init_listener(&self, tx: mpsc::Sender<RequestCache>) {
         let local_port = self.config.network_port;
         let cache_capacity = self.config.max_request_cache_count;
