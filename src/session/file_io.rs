@@ -56,22 +56,3 @@ impl FileIO {
 		}
 	}
 }
-
-#[cfg(test)]
-mod tests {
-	use file_io::FileIO;
-
-	#[test]
-	fn test_file_io() {
-		let test_path = "./testfile.txt";
-		let test_contents = "asdf";
-		//write some string to a file
-		FileIO::write_string(test_path, test_contents);
-		//read the file into a string
-		let file_contents = FileIO::read_string(test_path);
-		//test that the result of the read operation is what we expect
-		assert_eq!(test_contents, file_contents);
-		//clean up test file
-		FileIO::delete_file(test_path);
-	}
-}

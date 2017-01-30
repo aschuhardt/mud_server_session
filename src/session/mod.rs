@@ -50,6 +50,21 @@ impl<'a> Session<'a> {
         }
     }
 
+    pub fn create_request_type_hashes(&self, validation_token: &str) -> HashMap<Uuid, RequestType> {
+        // let validation_token = self.config.request_validation_token;
+        let mut hashes: HashMap<Uuid, RequestType> = HashMap::new();
+        //TODO: figure out why the linter says I need to write "ref t" here
+        for &(s, ref t) in &request::REQUEST_TYPE_VERB_MAP {
+            let verb_token = format!("{}_{}", s, validation_token);
+            let hash = Uuid::new_v5(&uuid::NAMESPACE_OID, verb_token.as_str());
+            hashes.insert(hash, t.clone());
+            if self.config.debug_mode {
+                println!("Hash created for request type \"{}\": {}", s, hash.hyphenated());
+            }
+        }
+        hashes
+    }
+    
     fn init_listener(&self, tx: mpsc::Sender<RequestCache>) {
         let local_port = self.config.network_port;
         let cache_capacity = self.config.max_request_cache_count;
@@ -80,21 +95,6 @@ impl<'a> Session<'a> {
                 println!("Failed to bind to port {}!", local_port);
             }
         });
-    }
-
-    pub fn create_request_type_hashes(&self, validation_token: &str) -> HashMap<Uuid, RequestType> {
-        // let validation_token = self.config.request_validation_token;
-        let mut hashes: HashMap<Uuid, RequestType> = HashMap::new();
-        //TODO: figure out why the linter says I need to write "ref t" here
-        for &(s, ref t) in &request::REQUEST_TYPE_VERB_MAP {
-            let verb_token = format!("{}_{}", s, validation_token);
-            let hash = Uuid::new_v5(&uuid::NAMESPACE_OID, verb_token.as_str());
-            hashes.insert(hash, t.clone());
-            if self.config.debug_mode {
-                println!("Hash created for request type \"{}\": {}", s, hash.hyphenated());
-            }
-        }
-        hashes
     }
 
     fn funnel_requests_into_cache(cache_tx: mpsc::Sender<RequestCache>, l_rx: mpsc::Receiver<Request>,

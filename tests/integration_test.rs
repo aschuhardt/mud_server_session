@@ -4,13 +4,16 @@ extern crate rustc_serialize;
 
 use std::io::prelude::*;
 use std::net;
+use std::{thread, time};
+use std::str::FromStr;
+
+use rustc_serialize::json;
+use uuid::Uuid;
+
 use mud_server_session::session::*;
 use mud_server_session::session::remote::request::*;
 use mud_server_session::configuration::*;
-use uuid::Uuid;
-use rustc_serialize::json;
-use std::{thread, time};
-use std::str::FromStr;
+use mud_server_session::file_io::*;
 
 #[test]
 fn test_request_receipt() {
@@ -31,11 +34,11 @@ fn test_request_receipt() {
     thread::sleep(five_secs);
 
     //send a bunch of packets corresponding to the different requests types
-    for i in 0..1024 {
+    for _ in 0..2 {
         //get type hashes
         let type_hashes = Session::new(&config).create_request_type_hashes(validation_token);
 
-        for (h, t) in type_hashes {
+        for (h, _) in type_hashes {
             //build request content payload
             let payload = "Hello world!".as_bytes().to_vec();
 
@@ -59,4 +62,39 @@ fn test_request_receipt() {
 
     //give server time to finish processing requests before
     thread::sleep(five_secs);
+}
+
+#[test]
+fn test_config_io() {
+    let test_config_path = "testconfig.json";
+    let test_conf = Configuration {
+        data_location: "data/data.json".to_string(),
+        network_port: 10722,
+        debug_mode: true,
+        max_request_cache_count: 64,
+        request_validation_token: "d5695226-2508-4187-b1eb-bed9665fbf26".to_string(),
+    };
+    //serialize + save configuration object
+    Configuration::save_config_path(&test_conf, test_config_path);
+    //deserialize + read configuration object
+    let loaded_conf = Configuration::load_path(test_config_path);
+    //test whether the loaded file has the test data in it
+    assert_eq!(test_conf.data_location, loaded_conf.data_location);
+    assert_eq!(test_conf.network_port, loaded_conf.network_port);
+    //clean up test file
+    FileIO::delete_file(test_config_path);
+}
+
+#[test]
+fn test_file_io() {
+    let test_path = "./testfile.txt";
+    let test_contents = "asdf";
+    //write some string to a file
+    FileIO::write_string(test_path, test_contents);
+    //read the file into a string
+    let file_contents = FileIO::read_string(test_path);
+    //test that the result of the read operation is what we expect
+    assert_eq!(test_contents, file_contents);
+    //clean up test file
+    FileIO::delete_file(test_path);
 }
