@@ -1,0 +1,11 @@
+[package]
+name = "mud_server_session"
+version = "0.1.0"
+authors = ["Addison Schuhardt <a@schuhardt.net>"]
+build = "build.rs"
+
+[dependencies]
+rustc-serialize = "0.3"
+uuid = { version = "0.2", features = ["rustc-serialize", "v4", "v5"] }
+time = "0.1"
+bincode = "0.6.0"
