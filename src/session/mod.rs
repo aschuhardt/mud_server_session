@@ -37,7 +37,8 @@ impl<'a> Session<'a> {
 
     pub fn run(&self) {
         let (req_tx, req_rs) = mpsc::channel();
-        let engine = Engine::new(self.config.request_validation_token.clone());
+        let mut engine = Engine::new(self.config.request_validation_token.clone(),
+                                     self.config.debug_mode);
         self.init_listener(req_tx);
         while !self.quit {
             //handle cached incoming requests
