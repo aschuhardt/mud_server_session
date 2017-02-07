@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use uuid::Uuid;
 
-use super::remote::request::Request;
+use mud_request::request::Request;
 
 #[derive(Clone)]
 pub struct RequestCache {

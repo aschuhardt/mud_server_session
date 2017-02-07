@@ -9,3 +9,6 @@ rustc-serialize = "0.3"
 uuid = { version = "0.2", features = ["rustc-serialize", "v4", "v5"] }
 time = "0.1"
 bincode = "0.6.0"
+mud_request = { path = "../mud_request" }
+mud_engine = { path = "../mud_engine" }
+mud_response = { path = "../mud_response/" }

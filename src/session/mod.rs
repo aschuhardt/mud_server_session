@@ -1,6 +1,5 @@
 //session.rs
 
-pub mod remote;
 pub mod configuration;
 pub mod file_io;
 
@@ -14,10 +13,11 @@ use std::thread;
 use std::sync::mpsc;
 
 use time;
-use uuid::{self, Uuid};
+use uuid::{Uuid};
+use mud_engine::Engine;
 
 use super::configuration::Configuration;
-use self::remote::request::{self, Request, RequestType};
+use mud_request::{Request, RequestType};
 use self::request_cache::RequestCache;
 
 const CACHE_EMIT_INTERVAL: i64 = 60;
@@ -37,39 +37,45 @@ impl<'a> Session<'a> {
 
     pub fn run(&self) {
         let (req_tx, req_rs) = mpsc::channel();
+        let engine = Engine::new(self.config.request_validation_token.clone());
         self.init_listener(req_tx);
         while !self.quit {
-            if let Ok(c) = req_rs.recv() {
+            //handle cached incoming requests
+            if let Ok(c) = req_rs.try_recv() {
                 //process request cache...
                 for (id, req) in &c.requests {
                     if self.config.debug_mode {
                         println!("Processing request: {} from client {}", id, req.client_id);
                     };
+                    engine.process_request(req);
                 }
+            }
+            //perform engine cycle
+            engine.perform_tick();
+            //receive outgoing responses from engine
+            let responses = engine.get_responses();
+            for res in &responses {
+                let res_clone = res.clone();
+                let debug_mode = self.config.debug_mode;
+                //send responses on seperate threads
+                thread::spawn(move || {
+                    //serialize + send out response
+                    let (msg, success) = res_clone.send();
+                    if !success && debug_mode {
+                        println!("{}", msg);
+                    }
+                });
             }
         }
     }
 
-    pub fn create_request_type_hashes(&self, validation_token: &str) -> HashMap<Uuid, RequestType> {
-        // let validation_token = self.config.request_validation_token;
-        let mut hashes: HashMap<Uuid, RequestType> = HashMap::new();
-        //TODO: figure out why the linter says I need to write "ref t" here
-        for &(s, ref t) in &request::REQUEST_TYPE_VERB_MAP {
-            let verb_token = format!("{}_{}", s, validation_token);
-            let hash = Uuid::new_v5(&uuid::NAMESPACE_OID, verb_token.as_str());
-            hashes.insert(hash, t.clone());
-            if self.config.debug_mode {
-                println!("Hash created for request type \"{}\": {}", s, hash.hyphenated());
-            }
-        }
-        hashes
-    }
+
 
     fn init_listener(&self, tx: mpsc::Sender<RequestCache>) {
         let local_port = self.config.network_port;
         let cache_capacity = self.config.max_request_cache_count;
         let debug_mode = self.config.debug_mode;
-        let type_hashes = self.create_request_type_hashes(&self.config.request_validation_token);
+        let type_hashes = Request::create_request_type_hashes(&self.config.request_validation_token);
         thread::spawn(move || {
             let (l_tx, l_rx) = mpsc::channel();
             //initialize loop that will wait for requests returned from listeners and add them to a
@@ -131,7 +137,7 @@ impl<'a> Session<'a> {
         if let Err(why) = stream.read_to_string(&mut buffer) {
             println!("Malformed or invalid stream buffer encountered from peer: {}. Reason: {}",
                      stream.peer_addr().unwrap(), why);
-        } else if let Some(req) = Request::new(buffer.clone(), type_hashes) {
+        } else if let Some(req) = Request::new(buffer.clone(), type_hashes, stream) {
             if let Err(why) = tx.send(req) {
                 println!("Unable to send request to caching thread: {}", why);
             } else if debug_mode {

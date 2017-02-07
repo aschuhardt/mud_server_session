@@ -1,4 +1,5 @@
 extern crate mud_server_session;
+extern crate mud_request;
 extern crate uuid;
 extern crate rustc_serialize;
 
@@ -11,7 +12,7 @@ use rustc_serialize::json;
 use uuid::Uuid;
 
 use mud_server_session::session::*;
-use mud_server_session::session::remote::request::*;
+use mud_request::request::*;
 use mud_server_session::configuration::*;
 use mud_server_session::file_io::*;
 
@@ -36,11 +37,11 @@ fn test_request_receipt() {
     //send a bunch of packets corresponding to the different requests types
     for _ in 0..2 {
         //get type hashes
-        let type_hashes = Session::new(&config).create_request_type_hashes(validation_token);
+        let type_hashes = Request::create_request_type_hashes(validation_token);
 
         for (h, _) in type_hashes {
             //build request content payload
-            let payload = "Hello world!".as_bytes().to_vec();
+            let payload = b"Hello world!".to_vec();
 
             //build request
             let req = SerializableRequest {
@@ -56,7 +57,7 @@ fn test_request_receipt() {
             let ipv4 = net::Ipv4Addr::from_str("127.0.0.1").unwrap();
             let addr = net::SocketAddrV4::new(ipv4, port);
             let mut stream = net::TcpStream::connect(addr).unwrap();
-            let _ = stream.write(&req_bytes);
+            let _ = stream.write(req_bytes);
         }
     }
 
